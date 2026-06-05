@@ -22,16 +22,17 @@ jobs:
             bc bison flex libssl-dev libelf-dev \
             python3 \
             gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabi \
             binutils-aarch64-linux-gnu \
             make zip curl git
         
       - name: Download Clang toolchain
         run: |
           mkdir -p clang
-          CLANG_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-aarch64-linux-gnu.tar.xz"
-          curl -LSs "$CLANG_URL" -o clang.tar.xz
-          tar -xf clang.tar.xz -C clang --strip-components=1
+          wget -q https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240828-release/Clang-19.0.0git-20240828.tar.gz -O clang.tar.gz
+          tar -xf clang.tar.gz -C clang
           echo "$PWD/clang/bin" >> $GITHUB_PATH
+          clang/bin/clang --version
 
       - name: Enable DIAG and KVM in defconfig
         run: |
