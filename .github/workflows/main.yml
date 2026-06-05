@@ -29,9 +29,10 @@ jobs:
       - name: Download Clang toolchain
         run: |
           mkdir -p clang
-          wget -q --show-progress \
+          curl -L --fail --progress-bar \
             "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz" \
-            -O clang.tar.xz
+            -o clang.tar.xz
+          file clang.tar.xz
           tar -xf clang.tar.xz -C clang --strip-components=1
           echo "$PWD/clang/bin" >> $GITHUB_PATH
           clang/bin/clang --version
