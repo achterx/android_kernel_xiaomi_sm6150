@@ -1,0 +1,110 @@
+name: Build Sweet Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: 14.0
+          fetch-depth: 1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex libssl-dev libelf-dev \
+            python3 python2-is-python3 \
+            gcc-aarch64-linux-gnu \
+            binutils-aarch64-linux-gnu \
+            make zip curl git
+
+      - name: Download Clang toolchain
+        run: |
+          mkdir -p clang
+          curl -LSs "https://raw.githubusercontent.com/kdrag0n/proton-clang/refs/heads/master/bin/clang" -o /dev/null || true
+          # Use prebuilt clang from ZyCromerZ
+          CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20231014-release/Clang-17.0.0-20231014.tar.gz"
+          curl -LSs "$CLANG_URL" -o clang.tar.gz
+          tar -xf clang.tar.gz -C clang
+          echo "$PWD/clang/bin" >> $GITHUB_PATH
+
+      - name: Enable DIAG and KVM in defconfig
+        run: |
+          DEFCONFIG="arch/arm64/configs/vendor/sweet_defconfig"
+          # Check if defconfig exists, fallback to sweetin
+          if [ ! -f "$DEFCONFIG" ]; then
+            DEFCONFIG="arch/arm64/configs/vendor/sweetin_defconfig"
+          fi
+          echo "Using defconfig: $DEFCONFIG"
+
+          # DIAG USB support
+          echo "CONFIG_USB_F_DIAG=y" >> $DEFCONFIG
+          echo "CONFIG_USB_CONFIGFS_F_DIAG=y" >> $DEFCONFIG
+
+          # KVM support
+          echo "CONFIG_VIRTUALIZATION=y" >> $DEFCONFIG
+          echo "CONFIG_KVM=y" >> $DEFCONFIG
+          echo "CONFIG_KVM_ARM_HOST=y" >> $DEFCONFIG
+          echo "CONFIG_VHOST=y" >> $DEFCONFIG
+          echo "CONFIG_VHOST_NET=y" >> $DEFCONFIG
+
+      - name: Build kernel
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export PATH="$PWD/clang/bin:$PATH"
+
+          # Find the right defconfig
+          if [ -f "arch/arm64/configs/vendor/sweet_defconfig" ]; then
+            DEFCONFIG="vendor/sweet_defconfig"
+          else
+            DEFCONFIG="vendor/sweetin_defconfig"
+          fi
+
+          make O=out ARCH=arm64 $DEFCONFIG
+          make O=out ARCH=arm64 CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            -j$(nproc --all) 2>&1 | tee build.log
+
+      - name: Check build output
+        run: |
+          if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
+            echo "BUILD SUCCESS: Image.gz-dtb found"
+          elif [ -f out/arch/arm64/boot/Image.gz ]; then
+            echo "BUILD SUCCESS: Image.gz found"
+          else
+            echo "BUILD FAILED: No kernel image found"
+            tail -50 build.log
+            exit 1
+          fi
+
+      - name: Upload kernel image
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweet-kernel-diag-kvm
+          path: |
+            out/arch/arm64/boot/Image.gz-dtb
+            out/arch/arm64/boot/Image.gz
+            out/arch/arm64/boot/dtbo.img
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 3
