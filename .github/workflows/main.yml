@@ -40,22 +40,21 @@ jobs:
       - name: Enable DIAG and KVM in defconfig
         run: |
           DEFCONFIG="arch/arm64/configs/vendor/sweet_defconfig"
-          # Check if defconfig exists, fallback to sweetin
           if [ ! -f "$DEFCONFIG" ]; then
             DEFCONFIG="arch/arm64/configs/vendor/sweetin_defconfig"
           fi
           echo "Using defconfig: $DEFCONFIG"
-
           # DIAG USB support
           echo "CONFIG_USB_F_DIAG=y" >> $DEFCONFIG
           echo "CONFIG_USB_CONFIGFS_F_DIAG=y" >> $DEFCONFIG
-
           # KVM support
           echo "CONFIG_VIRTUALIZATION=y" >> $DEFCONFIG
           echo "CONFIG_KVM=y" >> $DEFCONFIG
           echo "CONFIG_KVM_ARM_HOST=y" >> $DEFCONFIG
           echo "CONFIG_VHOST=y" >> $DEFCONFIG
           echo "CONFIG_VHOST_NET=y" >> $DEFCONFIG
+          # Fix NR_CPUS tracepoint issue
+          sed -i 's/CONFIG_NR_CPUS=.*/CONFIG_NR_CPUS=8/' $DEFCONFIG
 
       - name: Build kernel
         run: |
