@@ -66,18 +66,16 @@ jobs:
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export PATH="$PWD/clang/bin:$PATH"
-
-          # Find the right defconfig
           if [ -f "arch/arm64/configs/vendor/sweet_defconfig" ]; then
             DEFCONFIG="vendor/sweet_defconfig"
           else
             DEFCONFIG="vendor/sweetin_defconfig"
           fi
-
           make O=out ARCH=arm64 $DEFCONFIG
           make O=out ARCH=arm64 CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
+            KCFLAGS="-Wno-unused-function" \
             -j$(nproc --all) 2>&1 | tee build.log
 
       - name: Check build output
