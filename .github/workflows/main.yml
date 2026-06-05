@@ -24,15 +24,13 @@ jobs:
             gcc-aarch64-linux-gnu \
             binutils-aarch64-linux-gnu \
             make zip curl git
-
+        
       - name: Download Clang toolchain
         run: |
           mkdir -p clang
-          curl -LSs "https://raw.githubusercontent.com/kdrag0n/proton-clang/refs/heads/master/bin/clang" -o /dev/null || true
-          # Use prebuilt clang from ZyCromerZ
-          CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20231014-release/Clang-17.0.0-20231014.tar.gz"
-          curl -LSs "$CLANG_URL" -o clang.tar.gz
-          tar -xf clang.tar.gz -C clang
+          CLANG_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-aarch64-linux-gnu.tar.xz"
+          curl -LSs "$CLANG_URL" -o clang.tar.xz
+          tar -xf clang.tar.xz -C clang --strip-components=1
           echo "$PWD/clang/bin" >> $GITHUB_PATH
 
       - name: Enable DIAG and KVM in defconfig
